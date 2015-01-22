@@ -14,7 +14,7 @@ func LogHandler(next http.Handler) http.Handler {
 		tIni := time.Now()
 		next.ServeHTTP(w, r)
 		tEnd := time.Now()
-		log.Printf("[%s] %q %v\n", r.Method, r.URL.String(), tEnd.Sub(tIni))
+		log.Printf("%v [%s] %q %v\n", r.RemoteAddr, r.Method, r.URL.String(), tEnd.Sub(tIni))
 	}
 
 	return http.HandlerFunc(fn)
