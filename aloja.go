@@ -1,7 +1,10 @@
 package aloja
 
 import (
+	"html/template"
 	"net/http"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/golang/glog"
@@ -20,6 +23,10 @@ type Aloja struct {
 	host             string
 	port             string
 }
+
+var (
+	templates *template.Template
+)
 
 // New creates a new Aloja with options. Accepted are:
 // - Host
@@ -95,4 +102,35 @@ func (s *Aloja) Run() {
 // It accepts a list of middlewares and ordere is preserved left to right.
 func (s *Aloja) AddGlobal(m ...mw.Middleware) {
 	s.globalMiddleware.Add(m...)
+}
+
+func (s *Aloja) LoadTemplates(tdir string, templateDelims []string) (*template.Template, error) {
+	// So sorry. Can't remember where I found this code. I'll give credit when find author.
+	// initialize the templates,
+	// couldn't have used http://golang.org/pkg/html/template/#ParseGlob
+	// since we have custom delimiters.
+	basePath := tdir
+	err := filepath.Walk(basePath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		// don't process folders themselves
+		if info.IsDir() {
+			return nil
+		}
+		templateName := path[len(basePath):]
+		if templates == nil {
+			templates = template.New(templateName)
+			templates.Delims(templateDelims[0], templateDelims[1])
+			_, err = templates.ParseFiles(path)
+		} else {
+			_, err = templates.New(templateName).ParseFiles(path)
+		}
+		glog.Infof("Processed template %s\n", templateName)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	return templates, nil
 }
