@@ -2,12 +2,12 @@ package aloja
 
 import (
 	"html/template"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/jllopis/aloja/mw"
 	"github.com/julienschmidt/httprouter"
 )
@@ -88,12 +88,12 @@ func (s *Aloja) SSLConf(cert, key string) *Aloja {
 func (s *Aloja) Run() {
 	if s.cert != "" && s.key != "" {
 		// StartTLS
-		glog.Infof("Aloja started on %s:%s", s.host, s.port)
-		glog.Fatalf("(ERR) main: Cannot start https server: %s", http.ListenAndServeTLS(s.host+":"+s.port, s.cert, s.key, s.globalMiddleware.Then(s.router)))
+		log.Printf("Aloja started on %s:%s", s.host, s.port)
+		log.Fatalf("(ERR) main: Cannot start https server: %s", http.ListenAndServeTLS(s.host+":"+s.port, s.cert, s.key, s.globalMiddleware.Then(s.router)))
 	} else {
 		// Non TLS available!!!
-		glog.Infof("Aloja started on %s:%s", s.host, s.port)
-		glog.Warningf("SSL disabled!! Please, provide a certificate to be secured!!")
+		log.Printf("Aloja started on %s:%s", s.host, s.port)
+		log.Printf("SSL disabled!! Please, provide a certificate to be secured!!")
 		http.ListenAndServe(s.host+":"+s.port, s.globalMiddleware.Then(s.router))
 	}
 }
@@ -126,7 +126,7 @@ func (s *Aloja) LoadTemplates(tdir string, templateDelims []string) (*template.T
 		} else {
 			_, err = templates.New(templateName).ParseFiles(path)
 		}
-		glog.Infof("Processed template %s\n", templateName)
+		log.Printf("Processed template %s\n", templateName)
 		return err
 	})
 	if err != nil {
