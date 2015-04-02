@@ -1,38 +1,63 @@
 package aloja
 
 import (
+	"html/template"
+	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/jllopis/aloja/mw"
 	"github.com/julienschmidt/httprouter"
 )
 
-// Server has the methods to abstract the work away
-type Server struct {
-	router    *httprouter.Router
-	mwStack   *mw.Stack
-	cert, key string
-	host      string
-	port      string
+// Aloja has the methods to abstract the work away. It provides a default Subrouter to
+// carry on requests to '/'.
+// You can coall NewSubrouter method on it to group routes and apply different middlewares to them
+type Aloja struct {
+	*Subrouter
+	router           *httprouter.Router
+	globalMiddleware *mw.Stack
+	cert, key        string
+	host             string
+	port             string
 }
 
-// New creates a new Server with options
-func New(options ...func(s *Server) *Server) *Server {
-	srv := &Server{
-		router:  httprouter.New(),
-		mwStack: mw.New(),
-		host:    "",
-		port:    "8888",
+const (
+	VERSION = "v0.1.0"
+)
+
+var (
+	templates *template.Template
+)
+
+// New creates a new Aloja with options. Accepted are:
+// - Host
+// - Port
+// - SSLConf
+// It exposes a global middleware that is called on every request,
+// independently of the sobrouter configured if any
+func New(options ...func(s *Aloja) *Aloja) *Aloja {
+	srv := &Aloja{
+		router:           httprouter.New(),
+		globalMiddleware: mw.New(),
+		host:             "",
+		port:             "8888",
 	}
 	if options != nil {
 		for _, option := range options {
 			option(srv)
 		}
 	}
+	srv.Subrouter = &Subrouter{
+		srv.router,
+		mw.New(),
+		"/",
+	}
+
 	// add default service to give server time
-	srv.router.HandlerFunc("GET", "/time", func(w http.ResponseWriter, r *http.Request) {
+	srv.HandleFunc("GET", "/time", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		t, _ := time.Now().UTC().MarshalJSON()
 		w.Write(t)
@@ -41,19 +66,19 @@ func New(options ...func(s *Server) *Server) *Server {
 }
 
 // Host set the hostname for the running server
-func (s *Server) Host(h string) *Server {
+func (s *Aloja) Host(h string) *Aloja {
 	s.host = h
 	return s
 }
 
 // Port set the port for the running server
-func (s *Server) Port(p string) *Server {
+func (s *Aloja) Port(p string) *Aloja {
 	s.port = p
 	return s
 }
 
 // SSLConf pass in the cert and key for StartTLS
-func (s *Server) SSLConf(cert, key string) *Server {
+func (s *Aloja) SSLConf(cert, key string) *Aloja {
 	if cert != "" && key != "" {
 		s.cert = cert
 		s.key = key
@@ -64,57 +89,52 @@ func (s *Server) SSLConf(cert, key string) *Server {
 // Run is a convenience function to start an http server.
 // If cert and key were provided, ONLY https will be started!
 // If they aren't, http will boot up. NOT RECOMMENDED!
-func (s *Server) Run() {
+func (s *Aloja) Run() {
 	if s.cert != "" && s.key != "" {
 		// StartTLS
-		glog.Infof("Server started on %s:%s", s.host, s.port)
-		glog.Fatalf("(ERR) main: Cannot start https server: %s", http.ListenAndServeTLS(s.host+":"+s.port, s.cert, s.key, s.mwStack.Stack.Then(s.router)))
+		log.Printf("Aloja %s started on %s:%s", VERSION, s.host, s.port)
+		log.Fatalf("(ERR) main: Cannot start https server: %s", http.ListenAndServeTLS(s.host+":"+s.port, s.cert, s.key, s.globalMiddleware.Then(s.router)))
 	} else {
 		// Non TLS available!!!
-		glog.Infof("Server started on %s:%s", s.host, s.port)
-		glog.Warningf("SSL disabled!! Please, provide a certificate to be secured!!")
-		http.ListenAndServe(s.host+":"+s.port, s.mwStack.Stack.Then(s.router))
+		log.Printf("Aloja %s started on %s:%s", VERSION, s.host, s.port)
+		log.Printf("SSL disabled!! Please, provide a certificate to be secured!!")
+		http.ListenAndServe(s.host+":"+s.port, s.globalMiddleware.Then(s.router))
 	}
 }
 
 // Add stacks a new middleware. It will be the last called.
 // It accepts a list of middlewares and ordere is preserved left to right.
-func (s *Server) Add(m ...mw.Middleware) {
-	s.mwStack.Add(m...)
+func (s *Aloja) AddGlobal(m ...mw.Middleware) {
+	s.globalMiddleware.Add(m...)
 }
 
-// Handle serves an endpoint with the provided handler
-func (s *Server) Handle(method string, path string, f http.Handler) {
-	s.router.Handler(method, path, f)
-}
-
-// HandleFunc serves an endpoint with the provided handler
-func (s *Server) HandleFunc(method string, path string, f func(w http.ResponseWriter, r *http.Request)) {
-	s.router.HandlerFunc(method, path, f)
-}
-
-// Get registers a GET handler for the given path.
-func (s *Server) Get(path string, handler http.Handler) { s.Handle("GET", path, handler) }
-
-// Put registers a PUT handler for the given path.
-func (s *Server) Put(path string, handler http.Handler) { s.Handle("PUT", path, handler) }
-
-// Post registers a POST handler for the given path.
-func (s *Server) Post(path string, handler http.Handler) { s.Handle("POST", path, handler) }
-
-// Patch registers a PATCH handler for the given path.
-func (s *Server) Patch(path string, handler http.Handler) { s.Handle("PATCH", path, handler) }
-
-// Delete registers a DELETE handler for the given path.
-func (s *Server) Delete(path string, handler http.Handler) { s.Handle("DELETE", path, handler) }
-
-// Options registers a OPTIONS handler for the given path.
-func (s *Server) Options(path string, handler http.Handler) { s.Handle("OPTIONS", path, handler) }
-
-// ServeStatic provides a quick way to serve static files
-func (s *Server) ServeStatic(path string, dir string) {
-	fs := http.Dir(dir)
-	fh := http.StripPrefix(path, http.FileServer(fs))
-	s.router.Handler("GET", path, fh)
-	s.router.Handler("HEAD", path, fh)
+func (s *Aloja) LoadTemplates(tdir string, templateDelims []string) (*template.Template, error) {
+	// So sorry. Can't remember where I found this code. I'll give credit when find author.
+	// initialize the templates,
+	// couldn't have used http://golang.org/pkg/html/template/#ParseGlob
+	// since we have custom delimiters.
+	basePath := tdir
+	err := filepath.Walk(basePath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		// don't process folders themselves
+		if info.IsDir() {
+			return nil
+		}
+		templateName := path[len(basePath):]
+		if templates == nil {
+			templates = template.New(templateName)
+			templates.Delims(templateDelims[0], templateDelims[1])
+			_, err = templates.ParseFiles(path)
+		} else {
+			_, err = templates.New(templateName).ParseFiles(path)
+		}
+		log.Printf("Processed template %s\n", templateName)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	return templates, nil
 }

@@ -25,3 +25,7 @@ func (s *Stack) Add(m ...Middleware) {
 		s.Stack = s.Stack.Append(alice.Constructor(mdw))
 	}
 }
+
+func (s *Stack) Then(h http.Handler) http.Handler {
+	return s.Stack.Then(h)
+}
