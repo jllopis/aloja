@@ -24,6 +24,10 @@ type Aloja struct {
 	port             string
 }
 
+const (
+	VERSION = "v0.1.0"
+)
+
 var (
 	templates *template.Template
 )
@@ -88,11 +92,11 @@ func (s *Aloja) SSLConf(cert, key string) *Aloja {
 func (s *Aloja) Run() {
 	if s.cert != "" && s.key != "" {
 		// StartTLS
-		log.Printf("Aloja started on %s:%s", s.host, s.port)
+		log.Printf("Aloja %s started on %s:%s", VERSION, s.host, s.port)
 		log.Fatalf("(ERR) main: Cannot start https server: %s", http.ListenAndServeTLS(s.host+":"+s.port, s.cert, s.key, s.globalMiddleware.Then(s.router)))
 	} else {
 		// Non TLS available!!!
-		log.Printf("Aloja started on %s:%s", s.host, s.port)
+		log.Printf("Aloja %s started on %s:%s", VERSION, s.host, s.port)
 		log.Printf("SSL disabled!! Please, provide a certificate to be secured!!")
 		http.ListenAndServe(s.host+":"+s.port, s.globalMiddleware.Then(s.router))
 	}
