@@ -1,4 +1,5 @@
-# aloja convenience http little opinionated framework for plain http.Handlers
+aloja - little opinionated framework for plain http.Handlers
+============================================================
 
 This framework provide convenience for the usual suspects when developing RESTful APIs or Web Applications.
 
