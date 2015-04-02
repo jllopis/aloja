@@ -20,6 +20,10 @@ func sayHello(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Hello little grasshoper!")
 }
 
+func sayHelloName(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "Hello %s!", Params(r).ByName("name"))
+}
+
 func TestServer(t *testing.T) {
 	//server := New().Host("inscripciones.acb.info").Port("8887").SSLConf("certs/cert.pem", "certs/key.pem")
 	// New server on port 8888
@@ -51,6 +55,9 @@ func TestServer(t *testing.T) {
 
 	// Say hello!
 	r2.Get("/hello", http.HandlerFunc(sayHello))
+
+	// Say hello!
+	r2.Get("/hello/:name", http.HandlerFunc(sayHelloName))
 
 	server.Run()
 }

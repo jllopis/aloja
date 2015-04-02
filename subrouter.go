@@ -7,6 +7,7 @@ import (
 
 	"github.com/jllopis/aloja/mw"
 	"github.com/julienschmidt/httprouter"
+	"github.com/nbio/httpcontext"
 )
 
 type Subrouter struct {
@@ -21,11 +22,34 @@ func (s *Subrouter) NewSubrouter(subpath string, middlewares ...mw.Middleware) *
 	return sr
 }
 
+type key int
+
+const paramsKey key = 0
+
 // Handle serves an endpoint with the provided handler
-func (s *Subrouter) Handle(method string, path string, f http.Handler) {
+func (s *Subrouter) Handle(method string, path string, h http.Handler) {
 	// calcular path
 	fullPath := s.getFullPath(path)
-	s.router.Handler(method, fullPath, s.Stack.Then(f))
+	hrh := func(w http.ResponseWriter, req *http.Request, params httprouter.Params) {
+		httpcontext.Set(req, paramsKey, params)
+		s.Stack.Then(h).ServeHTTP(w, req)
+	}
+	s.router.Handle(method, fullPath, hrh)
+}
+
+// HandleFunc serves an endpoint with the provided handler
+func (s *Subrouter) HandleFunc(method string, path string, f func(w http.ResponseWriter, r *http.Request)) {
+	s.Handle(method, path, http.HandlerFunc(f))
+}
+
+// Params returns the httprouter.Params for req.
+func Params(req *http.Request) httprouter.Params {
+	if value, ok := httpcontext.GetOk(req, paramsKey); ok {
+		if params, ok := value.(httprouter.Params); ok {
+			return params
+		}
+	}
+	return httprouter.Params{}
 }
 
 func (s *Subrouter) getFullPath(p string) string {
@@ -37,11 +61,6 @@ func (s *Subrouter) getFullPath(p string) string {
 		return fullPath + "/"
 	}
 	return fullPath
-}
-
-// HandleFunc serves an endpoint with the provided handler
-func (s *Subrouter) HandleFunc(method string, path string, f func(w http.ResponseWriter, r *http.Request)) {
-	s.router.HandlerFunc(method, path, f)
 }
 
 // Get registers a GET handler for the given path.
