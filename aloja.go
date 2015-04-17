@@ -39,8 +39,10 @@ var (
 // It exposes a global middleware that is called on every request,
 // independently of the sobrouter configured if any
 func New(options ...func(s *Aloja) *Aloja) *Aloja {
+	r := httprouter.New()
+	r.HandleMethodNotAllowed = false
 	srv := &Aloja{
-		router:           httprouter.New(),
+		router:           r,
 		globalMiddleware: mw.New(),
 		host:             "",
 		port:             "8888",
