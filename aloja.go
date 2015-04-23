@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/fvbock/endless"
 	"github.com/jllopis/aloja/mw"
 	"github.com/julienschmidt/httprouter"
 )
@@ -95,12 +96,12 @@ func (s *Aloja) Run() {
 	if s.cert != "" && s.key != "" {
 		// StartTLS
 		log.Printf("Aloja %s started on %s:%s", VERSION, s.host, s.port)
-		log.Fatalf("(ERR) main: Cannot start https server: %s", http.ListenAndServeTLS(s.host+":"+s.port, s.cert, s.key, s.globalMiddleware.Then(s.router)))
+		log.Fatalf("(ERR) main: Cannot start https server: %s", endless.ListenAndServeTLS(s.host+":"+s.port, s.cert, s.key, s.globalMiddleware.Then(s.router)))
 	} else {
 		// Non TLS available!!!
 		log.Printf("Aloja %s started on %s:%s", VERSION, s.host, s.port)
 		log.Printf("SSL disabled!! Please, provide a certificate to be secured!!")
-		http.ListenAndServe(s.host+":"+s.port, s.globalMiddleware.Then(s.router))
+		endless.ListenAndServe(s.host+":"+s.port, s.globalMiddleware.Then(s.router))
 	}
 }
 
