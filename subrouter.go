@@ -1,7 +1,6 @@
 package aloja
 
 import (
-	"fmt"
 	"net/http"
 	"path"
 	"strings"
@@ -40,7 +39,6 @@ func (p ParamCol) ByName(name string) string {
 func (s *Subrouter) Handle(method string, path string, h http.Handler) {
 	// calcular path
 	fullPath := s.getFullPath(path)
-	fmt.Printf("Handle - fullPath=%v\n", fullPath)
 	hrh := func(w http.ResponseWriter, req *http.Request, params map[string]string) {
 		httpcontext.Set(req, paramsKey, params)
 		s.Stack.Then(h).ServeHTTP(w, req)
