@@ -105,3 +105,13 @@ func (s *Subrouter) ServeStatic(rpath string, dir string) {
 func (s *Subrouter) Use(m ...mw.Middleware) {
 	s.Stack.Add(m...)
 }
+
+// UseHandler registers an http.Handler as a middleware.
+func (s *Subrouter) UseHandler(handler http.Handler) {
+	s.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			handler.ServeHTTP(w, req)
+			next.ServeHTTP(w, req)
+		})
+	})
+}
