@@ -9,7 +9,8 @@ It uses mainstream and common utilities and it is heavily opinionated with focus
 
 In this release, we have:
 
-- Fast routing (by way of [httprouter](https://github.com/julienschmidt/httprouter)
+- Fast routing (by way of [httptreemux](https://github.com/dimfeld/httptreemux))
+- Zero downtime restarts through [endless](https://github.com/fvbock/endless)
 - Per request Context (provided by [httpcontext](https://github.com/nbio/httpcontext))
 - Middleware (gently managed by [alice](https://github.com/justinas/alice))
 - Named params
