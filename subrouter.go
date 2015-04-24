@@ -96,6 +96,10 @@ func (s *Subrouter) ServeStatic(rpath string, dir string) {
 	fs := http.Dir(dir)
 	fh := http.StripPrefix(fp, http.FileServer(fs))
 	root := path.Join(rpath, "/*filepath")
+	// Add two more routes for handling index.html
+	s.Handle("GET", rpath, fh)
+	s.Handle("HEAD", rpath, fh)
+	// and the files one...
 	s.Handle("GET", root, fh)
 	s.Handle("HEAD", root, fh)
 }
