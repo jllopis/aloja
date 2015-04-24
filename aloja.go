@@ -8,9 +8,9 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/dimfeld/httptreemux"
 	"github.com/fvbock/endless"
 	"github.com/jllopis/aloja/mw"
-	"github.com/julienschmidt/httprouter"
 )
 
 // Aloja has the methods to abstract the work away. It provides a default Subrouter to
@@ -18,7 +18,7 @@ import (
 // You can coall NewSubrouter method on it to group routes and apply different middlewares to them
 type Aloja struct {
 	*Subrouter
-	router           *httprouter.Router
+	router           *httptreemux.TreeMux
 	globalMiddleware *mw.Stack
 	cert, key        string
 	host             string
@@ -40,8 +40,8 @@ var (
 // It exposes a global middleware that is called on every request,
 // independently of the sobrouter configured if any
 func New(options ...func(s *Aloja) *Aloja) *Aloja {
-	r := httprouter.New()
-	r.HandleMethodNotAllowed = false
+	r := httptreemux.New()
+	//r.HandleMethodNotAllowed = false
 	srv := &Aloja{
 		router:           r,
 		globalMiddleware: mw.New(),

@@ -1,17 +1,18 @@
 package aloja
 
 import (
+	"fmt"
 	"net/http"
 	"path"
 	"strings"
 
+	"github.com/dimfeld/httptreemux"
 	"github.com/jllopis/aloja/mw"
-	"github.com/julienschmidt/httprouter"
 	"github.com/nbio/httpcontext"
 )
 
 type Subrouter struct {
-	router *httprouter.Router
+	router *httptreemux.TreeMux
 	*mw.Stack
 	path string
 }
@@ -26,11 +27,21 @@ type key int
 
 const paramsKey key = 0
 
+type ParamCol map[string]string
+
+func (p ParamCol) ByName(name string) string {
+	if value, ok := p[name]; ok {
+		return value
+	}
+	return ""
+}
+
 // Handle serves an endpoint with the provided handler
 func (s *Subrouter) Handle(method string, path string, h http.Handler) {
 	// calcular path
 	fullPath := s.getFullPath(path)
-	hrh := func(w http.ResponseWriter, req *http.Request, params httprouter.Params) {
+	fmt.Printf("Handle - fullPath=%v\n", fullPath)
+	hrh := func(w http.ResponseWriter, req *http.Request, params map[string]string) {
 		httpcontext.Set(req, paramsKey, params)
 		s.Stack.Then(h).ServeHTTP(w, req)
 	}
@@ -42,14 +53,12 @@ func (s *Subrouter) HandleFunc(method string, path string, f func(w http.Respons
 	s.Handle(method, path, http.HandlerFunc(f))
 }
 
-// Params returns the httprouter.Params for req.
-func Params(req *http.Request) httprouter.Params {
+// Params returns the httptreemux.Params for req.
+func Params(req *http.Request) ParamCol {
 	if value, ok := httpcontext.GetOk(req, paramsKey); ok {
-		if params, ok := value.(httprouter.Params); ok {
-			return params
-		}
+		return ParamCol(value.(map[string]string))
 	}
-	return httprouter.Params{}
+	return ParamCol{}
 }
 
 func (s *Subrouter) getFullPath(p string) string {
@@ -86,9 +95,9 @@ func (s *Subrouter) ServeStatic(rpath string, dir string) {
 	fp := s.getFullPath(rpath)
 	fs := http.Dir(dir)
 	fh := http.StripPrefix(fp, http.FileServer(fs))
-	fp = path.Join(fp, "/*filepath")
-	s.router.Handler("GET", fp, s.Stack.Then(fh))
-	s.router.Handler("HEAD", fp, s.Stack.Then(fh))
+	root := path.Join(rpath, "/*filepath")
+	s.Handle("GET", root, fh)
+	s.Handle("HEAD", root, fh)
 }
 
 func (s *Subrouter) Use(m ...mw.Middleware) {

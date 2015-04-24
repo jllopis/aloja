@@ -38,6 +38,9 @@ func TestServer(t *testing.T) {
 	// handler about on main route
 	server.HandleFunc("GET", "/about", aboutHandler)
 
+	// serve static content on root
+	//server.ServeStatic("/", "./static/")
+
 	// Create a subrouter on branch /v1
 	r1 := server.NewSubrouter("/v1")
 
