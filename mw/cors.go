@@ -6,9 +6,11 @@ import (
 	"github.com/rs/cors"
 )
 
-func CorsHandler(opts cors.Options) Middleware {
+type CorsOptions cors.Options
+
+func CorsHandler(opts CorsOptions) Middleware {
 	return func(h http.Handler) http.Handler {
-		c := cors.New(opts)
+		c := cors.New((cors.Options)(opts))
 		return c.Handler(h)
 	}
 }
