@@ -35,6 +35,32 @@ func (p ParamCol) ByName(name string) string {
 	return ""
 }
 
+func SetParams(req *http.Request, params map[string]string) {
+	var tmpmap map[string]string
+	if value, ok := httpcontext.GetOk(req, paramsKey); ok {
+		tmpmap = value.(map[string]string)
+	} else {
+		tmpmap = make(map[string]string)
+	}
+	for k, v := range params {
+		tmpmap[k] = v
+	}
+	httpcontext.Set(req, paramsKey, tmpmap)
+}
+
+func DeleteParam(req *http.Request, param string) {
+	if value, ok := httpcontext.GetOk(req, paramsKey); ok {
+		tmpmap := map[string]string{}
+		for k, v := range value.(map[string]string) {
+			if k == param {
+				continue
+			}
+			tmpmap[k] = v
+		}
+		httpcontext.Set(req, paramsKey, tmpmap)
+	}
+}
+
 // Handle serves an endpoint with the provided handler
 func (s *Subrouter) Handle(method string, path string, h http.Handler) {
 	// calcular path
